@@ -1,6 +1,4 @@
-## Screenshot
 
-![Molnus in Home Assistant](assets/molnus-card.png)
 # Molnus Home Assistant Integration
 
 A custom Home Assistant integration for **Molnus** wildlife cameras.
