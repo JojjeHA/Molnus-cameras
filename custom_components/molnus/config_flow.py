@@ -28,11 +28,13 @@ class MolnusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         if user_input is not None:
             camera_id = (user_input.get(CONF_CAMERA_ID) or "").strip()
 
+            # Basic camera id sanity check (UUID-ish)
             if len(camera_id) < 30 or "-" not in camera_id:
                 errors["base"] = "invalid_camera_id"
             else:
                 await self.async_set_unique_id(f"molnus_{camera_id}")
                 self._abort_if_unique_id_configured()
+
                 return self.async_create_entry(
                     title=f"Molnus {camera_id[:8]}…",
                     data={
@@ -50,7 +52,11 @@ class MolnusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             }
         )
 
-        return self.async_show_form(step_id="user", data_schema=data_schema, errors=errors)
+        return self.async_show_form(
+            step_id="user",
+            data_schema=data_schema,
+            errors=errors,
+        )
 
     @staticmethod
     @callback
@@ -83,4 +89,7 @@ class MolnusOptionsFlow(config_entries.OptionsFlow):
             }
         )
 
-        return self.async_show_form(step_id="init", data_schema=data_schema)
+        return self.async_show_form(
+            step_id="init",
+            data_schema=data_schema,
+        )
