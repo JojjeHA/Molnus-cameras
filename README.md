@@ -32,7 +32,7 @@ In Home Assistant:
 
 Add:
 
-- Repository: `https://github.com/YOUR_GITHUB_USERNAME/molnus-ha`
+- Repository: `https://github.com/JojjeHA/Molnus-cameras`
 - Category: **Integration**
 
 ### 2) Install
