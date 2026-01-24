@@ -1,0 +1,30 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Connect to Molnus",
+        "description": "Enter your Molnus credentials and camera ID.",
+        "data": {
+          "email": "Email",
+          "password": "Password",
+          "camera_id": "Camera ID"
+        }
+      }
+    },
+    "error": {
+      "invalid_camera_id": "Camera ID looks invalid."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Molnus options",
+        "data": {
+          "wildlife_required": "Wildlife required",
+          "limit": "Images to fetch (min 1)",
+          "scan_interval": "Scan interval (seconds)"
+        }
+      }
+    }
+  }
+}
