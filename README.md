@@ -1,3 +1,6 @@
+## Screenshot
+
+![Molnus in Home Assistant](assets/molnus-card.png)
 # Molnus Home Assistant Integration
 
 A custom Home Assistant integration for **Molnus** wildlife cameras.
@@ -137,6 +140,3 @@ push:
     critical: 1
     volume: 1.0
 
-## Screenshot
-
-![Molnus in Home Assistant](assets/molnus-card.png)
