@@ -1,4 +1,4 @@
-< width="800" height="571" alt="Screenshot" src="https://github.com/user-attachments/assets/0c88548d-a64c-446d-aa1e-943ece6239b1" />
+https://github.com/user-attachments/assets/0c88548d-a64c-446d-aa1e-943ece6239b1" />
 # Molnus Home Assistant imgIntegration
 
 
