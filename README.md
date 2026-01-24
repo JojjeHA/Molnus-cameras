@@ -137,3 +137,6 @@ push:
     critical: 1
     volume: 1.0
 
+## Screenshot
+
+![Molnus in Home Assistant](assets/molnus-card.png)
