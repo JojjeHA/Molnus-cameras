@@ -60,13 +60,14 @@ class MolnusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     @staticmethod
     @callback
-    def async_get_options_flow(config_entry):
+    def async_get_options_flow(config_entry: config_entries.ConfigEntry):
         return MolnusOptionsFlow(config_entry)
 
 
 class MolnusOptionsFlow(config_entries.OptionsFlow):
-    def __init__(self, config_entry):
-        self.config_entry = config_entry
+    def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
+        super().__init__()
+        self._config_entry = config_entry
 
     async def async_step_init(self, user_input=None):
         if user_input is not None:
@@ -76,15 +77,15 @@ class MolnusOptionsFlow(config_entries.OptionsFlow):
             {
                 vol.Optional(
                     CONF_WILDLIFE_REQUIRED,
-                    default=self.config_entry.options.get(CONF_WILDLIFE_REQUIRED, DEFAULT_WILDLIFE_REQUIRED),
+                    default=self._config_entry.options.get(CONF_WILDLIFE_REQUIRED, DEFAULT_WILDLIFE_REQUIRED),
                 ): bool,
                 vol.Optional(
                     CONF_LIMIT,
-                    default=self.config_entry.options.get(CONF_LIMIT, DEFAULT_LIMIT),
+                    default=self._config_entry.options.get(CONF_LIMIT, DEFAULT_LIMIT),
                 ): vol.Coerce(int),
                 vol.Optional(
                     CONF_SCAN_INTERVAL,
-                    default=self.config_entry.options.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL),
+                    default=self._config_entry.options.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL),
                 ): vol.Coerce(int),
             }
         )
