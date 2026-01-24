@@ -19,8 +19,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
 
 
 class MolnusLatestImageIdSensor(CoordinatorEntity[MolnusCoordinator], SensorEntity):
-    _attr_name = "Molnus Latest Image ID"
-    _attr_icon = "mdi:camera"
+    _attr_name = "Latest image ID"
+    _attr_icon = "mdi:camera-wireless"
     _attr_has_entity_name = True
 
     def __init__(self, coordinator: MolnusCoordinator, camera_id: str) -> None:
@@ -34,7 +34,7 @@ class MolnusLatestImageIdSensor(CoordinatorEntity[MolnusCoordinator], SensorEnti
             identifiers={(DOMAIN, self._camera_id)},
             name="Molnus Camera",
             manufacturer="Molnus",
-            model="Cloud camera",
+            model="Wildlife camera",
         )
 
     @property
@@ -45,7 +45,6 @@ class MolnusLatestImageIdSensor(CoordinatorEntity[MolnusCoordinator], SensorEnti
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         latest = self.coordinator.data.get("latest") or {}
-        # Pass through useful fields for automations/notifications
         keys = [
             "url",
             "thumbnailUrl",
