@@ -1,7 +1,6 @@
 {
   "name": "Molnus",
   "content_in_root": false,
-  "domains": ["molnus"],
   "zip_release": false,
   "render_readme": true
 }
