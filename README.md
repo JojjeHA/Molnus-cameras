@@ -1,6 +1,7 @@
 <p align="center">
   <img src="assets/molnus-logo.png" width="350">
 </p>
+
 # Molnus Home Assistant Integration
 
 
