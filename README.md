@@ -1,4 +1,6 @@
-Screenshot: https://github.com/user-attachments/assets/0c88548d-a64c-446d-aa1e-943ece6239b1
+<p align="center">
+  <img src="assets/molnus-logo.png" width="350">
+</p>
 # Molnus Home Assistant Integration
 
 
@@ -103,7 +105,7 @@ The value after `CameraId=` is your camera UUID.
 ## Camera
 **Molnus Latest**
 - Displays the latest image inside Home Assistant
-
+Screenshot: https://github.com/user-attachments/assets/0c88548d-a64c-446d-aa1e-943ece6239b1
 ---
 
 # Example Automation: Notify on new image
