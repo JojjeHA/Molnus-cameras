@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import timedelta
+from datetime import datetime, timedelta
 from typing import Any
 import logging
 
@@ -10,6 +10,16 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, Upda
 from .api import MolnusApiClient
 
 _LOGGER = logging.getLogger(__name__)
+
+
+def _parse_dt(value: str | None) -> datetime:
+    """Parse ISO datetime from Molnus (usually ends with Z)."""
+    if not value:
+        return datetime.min
+    try:
+        return datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except Exception:
+        return datetime.min
 
 
 class MolnusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
@@ -41,7 +51,20 @@ class MolnusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 limit=max(1, self.limit),
                 wildlife_required=self.wildlife_required,
             )
-            latest = images[0] if images else {}
-            return {"images": images, "latest": latest}
+
+            # Ensure we always pick newest, regardless of API ordering
+            if images:
+                images_sorted = sorted(
+                    images,
+                    key=lambda x: _parse_dt(x.get("captureDate") or x.get("createdAt")),
+                    reverse=True,
+                )
+                latest = images_sorted[0]
+            else:
+                images_sorted = []
+                latest = {}
+
+            return {"images": images_sorted, "latest": latest}
+
         except Exception as err:
             raise UpdateFailed(str(err)) from err
