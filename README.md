@@ -82,8 +82,7 @@ Open Developer Tools (F12) → **Network** tab, then open the image gallery.
 
 You should see a request like:
 
-https://molnus.com/images/get?CameraId=
-<UUID>&offset=0&limit=50&wildlifeRequired=false
+https://molnus.com/images/get?CameraId=<UUID>&offset=0&limit=50&wildlifeRequired=false
 
 
 The value after `CameraId=` is your camera UUID.
@@ -112,7 +111,7 @@ Screenshot: https://github.com/user-attachments/assets/0c88548d-a64c-446d-aa1e-9
 # Example Automation: Notify on new image
 
 ```yaml
-alias: "📸 Molnus: New wildlife picture"
+alias: "📸 Molnus: Ny bild från viltkameran"
 mode: single
 trigger:
   - platform: state
@@ -123,9 +122,9 @@ condition:
   - condition: template
     value_template: "{{ trigger.from_state.state not in ['unknown','unavailable'] }}"
 action:
-  - action: notify.notify_johannes
+  - action: notify.mobile_app
     data:
-      title: "📸 Ny bild från viltkameran!"
+      title: "📸 Ny bild registrerad!"
       message: >
         Tid: {{ state_attr('sensor.molnus_latest_image_id', 'captureDate') }}
       data:
