@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 import voluptuous as vol
 
 from homeassistant import config_entries
@@ -18,6 +19,23 @@ from .const import (
     DEFAULT_SCAN_INTERVAL,
 )
 
+_UUID_RE = re.compile(
+    r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"
+)
+
+
+def _normalize_camera_id(value: str) -> str:
+    """Accept raw UUID or a string containing CameraId=<uuid>."""
+    raw = (value or "").strip()
+
+    # First, if user pasted a URL or query string, extract UUID anywhere in it.
+    m = _UUID_RE.search(raw)
+    if m:
+        return m.group(0)
+
+    # Otherwise return trimmed raw (may still be invalid, validated later)
+    return raw
+
 
 class MolnusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     VERSION = 1
@@ -26,10 +44,10 @@ class MolnusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         errors = {}
 
         if user_input is not None:
-            camera_id = (user_input.get(CONF_CAMERA_ID) or "").strip()
+            camera_id = _normalize_camera_id(user_input.get(CONF_CAMERA_ID, ""))
 
-            # Basic camera id sanity check (UUID-ish)
-            if len(camera_id) < 30 or "-" not in camera_id:
+            # UUID-ish validation
+            if not _UUID_RE.fullmatch(camera_id):
                 errors["base"] = "invalid_camera_id"
             else:
                 await self.async_set_unique_id(f"molnus_{camera_id}")
@@ -71,7 +89,11 @@ class MolnusOptionsFlow(config_entries.OptionsFlow):
 
     async def async_step_init(self, user_input=None):
         if user_input is not None:
-            return self.async_create_entry(title="", data=user_input)
+            # Sanitize values
+            cleaned = dict(user_input)
+            cleaned[CONF_LIMIT] = max(1, int(cleaned.get(CONF_LIMIT, DEFAULT_LIMIT)))
+            cleaned[CONF_SCAN_INTERVAL] = max(10, int(cleaned.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)))
+            return self.async_create_entry(title="", data=cleaned)
 
         data_schema = vol.Schema(
             {
@@ -90,7 +112,4 @@ class MolnusOptionsFlow(config_entries.OptionsFlow):
             }
         )
 
-        return self.async_show_form(
-            step_id="init",
-            data_schema=data_schema,
-        )
+        return self.async_show_form(step_id="init", data_schema=data_schema)
