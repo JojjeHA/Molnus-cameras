@@ -82,7 +82,8 @@ Open Developer Tools (F12) → **Network** tab, then open the image gallery.
 
 You should see a request like:
 
-https://molnus.com/images/get?CameraId=<UUID>&offset=0&limit=50&wildlifeRequired=false
+https://molnus.com/images/get?CameraId=
+<UUID>&offset=0&limit=50&wildlifeRequired=false
 
 
 The value after `CameraId=` is your camera UUID.
