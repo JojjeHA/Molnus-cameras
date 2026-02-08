@@ -94,7 +94,7 @@ The value after `CameraId=` is your camera UUID.
 
 ## Sensor
 **Molnus Latest Image ID**
-- State: latest image ID
+- State: Latest image ID (numeric)
 - Attributes:
   - `url`
   - `thumbnailUrl`
@@ -102,15 +102,20 @@ The value after `CameraId=` is your camera UUID.
   - `createdAt`
   - `deviceFilename`
   - `CameraId`
-
+  - `ImagePredictions`
+  - `species_labels`
+  - `species_top`
+  - `species_top_accuracy`
+    
+species_labels and species_top can be used in Home Assistant automations to trigger notifications for specific species (e.g. SUS_SCROFA for wild boar).
 ## Camera
 **Molnus Latest**
 - Displays the latest image inside Home Assistant
 Screenshot: https://github.com/user-attachments/assets/0c88548d-a64c-446d-aa1e-943ece6239b1
 ---
 
-# Example Automation: Notify on new image
-
+# Example Automations
+Automation Example 1:
 ```yaml
 alias: "📸 Molnus: Ny bild från viltkameran"
 mode: single
@@ -123,22 +128,64 @@ condition:
   - condition: template
     value_template: "{{ trigger.from_state.state not in ['unknown','unavailable'] }}"
 action:
-  - action: notify.mobile_app
+  - action: notify.mobile_app_iphone
     data:
       title: "📸 Ny bild registrerad!"
       message: >
         Tid: {{ state_attr('sensor.molnus_latest_image_id', 'captureDate') }}
       data:
         image: "{{ state_attr('sensor.molnus_latest_image_id', 'url') }}"
+```
+
+---
+Automation Example 2:
+```yaml
+alias: "Molnus – Vildsvin före 21"
+mode: single
+trigger:
+  - platform: state
+    entity_id: sensor.molnus_latest_image_id
+condition:
+  - condition: template
+    value_template: >
+      {{ trigger.to_state is not none and trigger.to_state.state not in ['unknown','unavailable',''] }}
+  - condition: time
+    before: "21:00:00"
+  - condition: template
+    value_template: >
+      {% set labels = state_attr('sensor.molnus_latest_image_id','species_labels') or [] %}
+      {{ 'SUS_SCROFA' in labels }}
+action:
+  - service: notify.mobile_app_iphone
+    data:
+      title: "🐗 Vildsvin upptäckt"
+      message: "Molnus klassning: SUS_SCROFA"
+      data:
+        image: "{{ state_attr('sensor.molnus_latest_image_id','url') }}"
+        push:
+          sound:
+            name: default
+            critical: 1
+            volume: 1.0
+
+```
+---
+For Example 2 you'll need to know the name of the species and you can log that by using this automation:
+```yaml
+alias: Molnus – Logga artklassning
+mode: queued
+trigger:
+  - platform: state
+    entity_id: sensor.molnus_latest_image_id
+condition: []
+action:
+  - service: logbook.log
+    data:
+      name: Molnus
+      message: >
+        Ny bild. species_top={{ state_attr('sensor.molnus_latest_image_id','species_top') }}
+        labels={{ state_attr('sensor.molnus_latest_image_id','species_labels') }}
+```
 
 
-Critical notification (iOS)
-
-Add this inside the same notify data: block:
-
-push:
-  sound:
-    name: default
-    critical: 1
-    volume: 1.0
 
