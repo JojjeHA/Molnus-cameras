@@ -13,7 +13,7 @@ _LOGGER = logging.getLogger(__name__)
 
 
 def _parse_dt(value: str | None) -> datetime:
-    """Parse ISO datetime from Molnus (usually ends with Z)."""
+    """Parse Molnus ISO datetime (often ends with Z)."""
     if not value:
         return datetime.min
     try:
@@ -41,28 +41,26 @@ class MolnusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self.client = client
         self.camera_id = camera_id
         self.wildlife_required = wildlife_required
-        self.limit = limit
+        self.limit = max(1, int(limit))
+        self.scan_interval_s = int(scan_interval_s)
 
     async def _async_update_data(self) -> dict[str, Any]:
         try:
             images = await self.client.get_images(
                 camera_id=self.camera_id,
                 offset=0,
-                limit=max(1, self.limit),
+                limit=self.limit,
                 wildlife_required=self.wildlife_required,
             )
 
-            # Ensure we always pick newest, regardless of API ordering
-            if images:
-                images_sorted = sorted(
-                    images,
-                    key=lambda x: _parse_dt(x.get("captureDate") or x.get("createdAt")),
-                    reverse=True,
-                )
-                latest = images_sorted[0]
-            else:
-                images_sorted = []
-                latest = {}
+            # Make robust against API order: always pick newest by captureDate/createdAt
+            images_sorted: list[dict[str, Any]] = sorted(
+                images or [],
+                key=lambda x: _parse_dt(x.get("captureDate") or x.get("createdAt")),
+                reverse=True,
+            )
+
+            latest = images_sorted[0] if images_sorted else {}
 
             return {"images": images_sorted, "latest": latest}
 
