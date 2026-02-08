@@ -19,9 +19,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
 
 
 class MolnusLatestImageIdSensor(CoordinatorEntity[MolnusCoordinator], SensorEntity):
+    _attr_has_entity_name = True
     _attr_name = "Latest image ID"
     _attr_icon = "mdi:camera-wireless"
-    _attr_has_entity_name = True
 
     def __init__(self, coordinator: MolnusCoordinator, camera_id: str) -> None:
         super().__init__(coordinator)
@@ -45,12 +45,60 @@ class MolnusLatestImageIdSensor(CoordinatorEntity[MolnusCoordinator], SensorEnti
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         latest = self.coordinator.data.get("latest") or {}
-        keys = [
+
+        # Raw predictions list from API (may be missing)
+        preds = latest.get("ImagePredictions") or []
+        if not isinstance(preds, list):
+            preds = []
+
+        # Unique labels
+        labels = []
+        for p in preds:
+            if isinstance(p, dict) and "label" in p and p["label"] is not None:
+                labels.append(str(p["label"]))
+        species_labels = sorted(set(labels))
+
+        # Top prediction by accuracy
+        top_label = ""
+        top_acc = None
+        best = None
+        best_acc = -1.0
+        for p in preds:
+            if not isinstance(p, dict):
+                continue
+            acc = p.get("accuracy")
+            try:
+                acc_f = float(acc)
+            except Exception:
+                acc_f = -1.0
+            if acc_f > best_acc:
+                best_acc = acc_f
+                best = p
+
+        if isinstance(best, dict):
+            top_label = str(best.get("label") or "")
+            try:
+                top_acc = float(best.get("accuracy"))
+            except Exception:
+                top_acc = None
+
+        # Keep existing useful attrs too
+        attrs: dict[str, Any] = {}
+        for k in [
             "url",
             "thumbnailUrl",
             "captureDate",
             "createdAt",
             "deviceFilename",
             "CameraId",
-        ]
-        return {k: latest.get(k) for k in keys if k in latest}
+        ]:
+            if k in latest:
+                attrs[k] = latest.get(k)
+
+        # New attrs for automation use
+        attrs["ImagePredictions"] = preds
+        attrs["species_labels"] = species_labels
+        attrs["species_top"] = top_label
+        attrs["species_top_accuracy"] = top_acc
+
+        return attrs
