@@ -80,7 +80,7 @@ Open Molnus in a browser and log in:
 
 Open up a picture by clicking on it and the UUID is the string in the browser address field after "camera="
 
-https://molnus.com/#/image-gallery?camera=[this is your UUID]
+https://molnus.com/#/image-gallery?camera= [this is your UUID]
 
 ---
 
