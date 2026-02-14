@@ -78,15 +78,9 @@ Open Molnus in a browser and log in:
 
 - https://molnus.com/#/camera-list
 
-Open Developer Tools (F12) → **Network** tab, then open the image gallery.
+Open up a picture by clicking on it and the UUID is the string in the browser address field after "camera="
 
-You should see a request like:
-
-https://molnus.com/images/get?CameraId=
-<UUID>&offset=0&limit=50&wildlifeRequired=false
-
-
-The value after `CameraId=` is your camera UUID.
+https://molnus.com/#/image-gallery?camera=[this is your UUID]
 
 ---
 
