@@ -26,10 +26,10 @@ class MolnusLatestImageIdSensor(CoordinatorEntity[MolnusCoordinator], SensorEnti
         super().__init__(coordinator)
         self._camera_id = str(camera_id)
 
-        # Unique per camera (you already had this — keep it)
+        # Unique per camera
         self._attr_unique_id = f"molnus_{self._camera_id}_latest_image_id"
 
-        # KEY CHANGE: include camera id in name → HA will generate entity_id with suffix
+        # IMPORTANT: include camera id in name so HA generates entity_id suffix
         # Example: sensor.molnus_camera_latest_image_id_405944562
         self._attr_name = f"Latest image ID {self._camera_id}"
 
@@ -51,16 +51,19 @@ class MolnusLatestImageIdSensor(CoordinatorEntity[MolnusCoordinator], SensorEnti
     def extra_state_attributes(self) -> dict[str, Any]:
         latest = self.coordinator.data.get("latest") or {}
 
+        # Raw predictions list from API (may be missing)
         preds = latest.get("ImagePredictions") or []
         if not isinstance(preds, list):
             preds = []
 
+        # Unique labels
         labels = []
         for p in preds:
             if isinstance(p, dict) and "label" in p and p["label"] is not None:
                 labels.append(str(p["label"]))
         species_labels = sorted(set(labels))
 
+        # Top prediction by accuracy
         top_label = ""
         top_acc = None
         best = None
@@ -84,6 +87,7 @@ class MolnusLatestImageIdSensor(CoordinatorEntity[MolnusCoordinator], SensorEnti
             except Exception:
                 top_acc = None
 
+        # Keep existing useful attrs too
         attrs: dict[str, Any] = {}
         for k in [
             "url",
@@ -96,6 +100,7 @@ class MolnusLatestImageIdSensor(CoordinatorEntity[MolnusCoordinator], SensorEnti
             if k in latest:
                 attrs[k] = latest.get(k)
 
+        # New attrs for automation use
         attrs["ImagePredictions"] = preds
         attrs["species_labels"] = species_labels
         attrs["species_top"] = top_label
