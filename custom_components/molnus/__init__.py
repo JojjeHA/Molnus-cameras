@@ -8,6 +8,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.util import slugify
 
 from .api import MolnusApiClient
 from .const import (
@@ -67,26 +68,27 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 
 async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Migrate old entity_ids to include camera_id suffix."""
-    camera_id = str(entry.data.get(CONF_CAMERA_ID, "")).strip()
-    if not camera_id:
+    """Migrate old entity_ids to include camera_id suffix (slugified)."""
+    camera_id_raw = str(entry.data.get(CONF_CAMERA_ID, "")).strip()
+    if not camera_id_raw:
         return True
+
+    camera_id_slug = slugify(camera_id_raw)  # converts UUID with '-' into valid entity-id-safe suffix
 
     ent_reg = er.async_get(hass)
 
-    # Must match unique_id in sensor.py
-    unique_id = f"molnus_{camera_id}_latest_image_id"
+    # Must match unique_id in sensor.py (unique_id can contain '-'; that's fine)
+    unique_id = f"molnus_{camera_id_raw}_latest_image_id"
 
     current_entity_id = ent_reg.async_get_entity_id("sensor", DOMAIN, unique_id)
     if not current_entity_id:
         return True
 
-    desired_entity_id = f"sensor.molnus_camera_latest_image_id_{camera_id}"
+    desired_entity_id = f"sensor.molnus_camera_latest_image_id_{camera_id_slug}"
 
     if current_entity_id == desired_entity_id:
         return True
 
-    # Don't clobber if user already has something with that entity_id
     if ent_reg.async_get(desired_entity_id):
         _LOGGER.warning(
             "Cannot migrate %s -> %s because %s already exists",
@@ -96,6 +98,17 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         )
         return True
 
-    _LOGGER.info("Migrating entity_id %s -> %s", current_entity_id, desired_entity_id)
-    ent_reg.async_update_entity(current_entity_id, new_entity_id=desired_entity_id)
+    try:
+        _LOGGER.info("Migrating entity_id %s -> %s", current_entity_id, desired_entity_id)
+        ent_reg.async_update_entity(current_entity_id, new_entity_id=desired_entity_id)
+    except ValueError as err:
+        # Never break migrations — log and continue so entry doesn't go into "Needs attention"
+        _LOGGER.error(
+            "Entity ID migration failed for %s -> %s: %s",
+            current_entity_id,
+            desired_entity_id,
+            err,
+        )
+        return True
+
     return True
