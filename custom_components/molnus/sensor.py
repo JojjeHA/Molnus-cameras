@@ -15,29 +15,35 @@ from .coordinator import MolnusCoordinator
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities):
     coordinator: MolnusCoordinator = hass.data[DOMAIN][entry.entry_id]["coordinator"]
     camera_id = str(entry.data[CONF_CAMERA_ID])
-    async_add_entities([MolnusLatestImageIdSensor(coordinator, camera_id)], True)
+
+    # Use the config entry title as the friendly device name
+    # (this is what you name the camera in the add-integration UI)
+    entry_title = (entry.title or "").strip() or "Molnus Camera"
+
+    async_add_entities([MolnusLatestImageIdSensor(coordinator, camera_id, entry_title)], True)
 
 
 class MolnusLatestImageIdSensor(CoordinatorEntity[MolnusCoordinator], SensorEntity):
     _attr_has_entity_name = True
     _attr_icon = "mdi:camera-wireless"
 
-    def __init__(self, coordinator: MolnusCoordinator, camera_id: str) -> None:
+    def __init__(self, coordinator: MolnusCoordinator, camera_id: str, device_name: str) -> None:
         super().__init__(coordinator)
         self._camera_id = str(camera_id)
+        self._device_name = str(device_name)
 
-        # Unique per camera
+        # Stable unique ID (can contain '-', that's OK)
         self._attr_unique_id = f"molnus_{self._camera_id}_latest_image_id"
 
-        # IMPORTANT: include camera id in name so HA generates entity_id suffix
-        # Example: sensor.molnus_camera_latest_image_id_405944562
-        self._attr_name = f"Latest image ID {self._camera_id}"
+        # Keep name stable; don't include raw UUID here (prevents ugly UI names)
+        # (entity_id is already created/migrated; no need to keep suffix via name)
+        self._attr_name = "Latest image ID"
 
     @property
     def device_info(self) -> DeviceInfo:
         return DeviceInfo(
             identifiers={(DOMAIN, self._camera_id)},
-            name="Molnus Camera",
+            name=self._device_name,
             manufacturer="Molnus",
             model="Wildlife camera",
         )
