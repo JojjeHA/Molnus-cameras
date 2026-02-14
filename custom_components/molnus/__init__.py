@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+import logging
+
 from aiohttp import ClientSession
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .api import MolnusApiClient
@@ -22,6 +25,8 @@ from .const import (
     DEFAULT_SCAN_INTERVAL,
 )
 from .coordinator import MolnusCoordinator
+
+_LOGGER = logging.getLogger(__name__)
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
@@ -59,3 +64,38 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     if unload_ok:
         hass.data[DOMAIN].pop(entry.entry_id, None)
     return unload_ok
+
+
+async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Migrate old entity_ids to include camera_id suffix."""
+    camera_id = str(entry.data.get(CONF_CAMERA_ID, "")).strip()
+    if not camera_id:
+        return True
+
+    ent_reg = er.async_get(hass)
+
+    # Must match unique_id in sensor.py
+    unique_id = f"molnus_{camera_id}_latest_image_id"
+
+    current_entity_id = ent_reg.async_get_entity_id("sensor", DOMAIN, unique_id)
+    if not current_entity_id:
+        return True
+
+    desired_entity_id = f"sensor.molnus_camera_latest_image_id_{camera_id}"
+
+    if current_entity_id == desired_entity_id:
+        return True
+
+    # Don't clobber if user already has something with that entity_id
+    if ent_reg.async_get(desired_entity_id):
+        _LOGGER.warning(
+            "Cannot migrate %s -> %s because %s already exists",
+            current_entity_id,
+            desired_entity_id,
+            desired_entity_id,
+        )
+        return True
+
+    _LOGGER.info("Migrating entity_id %s -> %s", current_entity_id, desired_entity_id)
+    ent_reg.async_update_entity(current_entity_id, new_entity_id=desired_entity_id)
+    return True
