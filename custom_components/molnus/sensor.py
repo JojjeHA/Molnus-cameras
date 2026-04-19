@@ -12,31 +12,50 @@ from .const import DOMAIN, CONF_CAMERA_ID
 from .coordinator import MolnusCoordinator
 
 
-async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities):
+async def async_setup_entry(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    async_add_entities,
+) -> None:
     coordinator: MolnusCoordinator = hass.data[DOMAIN][entry.entry_id]["coordinator"]
     camera_id = str(entry.data[CONF_CAMERA_ID])
 
-    # Use the config entry title as the friendly device name
-    # (this is what you name the camera in the add-integration UI)
     entry_title = (entry.title or "").strip() or "Molnus Camera"
 
-    async_add_entities([MolnusLatestImageIdSensor(coordinator, camera_id, entry_title)], True)
+    async_add_entities(
+        [
+            MolnusLatestImageIdSensor(
+                coordinator=coordinator,
+                camera_id=camera_id,
+                device_name=entry_title,
+            )
+        ],
+        True,
+    )
 
 
-class MolnusLatestImageIdSensor(CoordinatorEntity[MolnusCoordinator], SensorEntity):
+class MolnusLatestImageIdSensor(
+    CoordinatorEntity[MolnusCoordinator],
+    SensorEntity,
+):
     _attr_has_entity_name = True
     _attr_icon = "mdi:camera-wireless"
 
-    def __init__(self, coordinator: MolnusCoordinator, camera_id: str, device_name: str) -> None:
+    def __init__(
+        self,
+        coordinator: MolnusCoordinator,
+        camera_id: str,
+        device_name: str,
+    ) -> None:
         super().__init__(coordinator)
+
         self._camera_id = str(camera_id)
         self._device_name = str(device_name)
 
-        # Stable unique ID (can contain '-', that's OK)
-        self._attr_unique_id = f"molnus_{self._camera_id}_latest_image_id"
+        self._attr_unique_id = (
+            f"molnus_{self._camera_id}_latest_image_id"
+        )
 
-        # Keep name stable; don't include raw UUID here (prevents ugly UI names)
-        # (entity_id is already created/migrated; no need to keep suffix via name)
         self._attr_name = "Latest image ID"
 
     @property
@@ -51,40 +70,56 @@ class MolnusLatestImageIdSensor(CoordinatorEntity[MolnusCoordinator], SensorEnti
     @property
     def native_value(self) -> Any:
         latest = self.coordinator.data.get("latest") or {}
-        return latest.get("id")
+
+        image_id = latest.get("id")
+
+        if image_id is None:
+            return None
+
+        return str(image_id)
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         latest = self.coordinator.data.get("latest") or {}
 
-        # Raw predictions list from API (may be missing)
-        preds = latest.get("ImagePredictions") or []
+        # NEW API uses lowercase imagePredictions
+        preds = (
+            latest.get("imagePredictions")
+            or latest.get("ImagePredictions")
+            or []
+        )
+
         if not isinstance(preds, list):
             preds = []
 
-        # Unique labels
-        labels = []
+        labels: list[str] = []
+
         for p in preds:
-            if isinstance(p, dict) and "label" in p and p["label"] is not None:
-                labels.append(str(p["label"]))
+            if isinstance(p, dict):
+                label = p.get("label")
+                if label is not None:
+                    labels.append(str(label))
+
         species_labels = sorted(set(labels))
 
-        # Top prediction by accuracy
-        top_label = ""
-        top_acc = None
         best = None
         best_acc = -1.0
+
         for p in preds:
             if not isinstance(p, dict):
                 continue
-            acc = p.get("accuracy")
+
             try:
-                acc_f = float(acc)
+                acc = float(p.get("accuracy", -1))
             except Exception:
-                acc_f = -1.0
-            if acc_f > best_acc:
-                best_acc = acc_f
+                acc = -1.0
+
+            if acc > best_acc:
+                best_acc = acc
                 best = p
+
+        top_label = ""
+        top_acc = None
 
         if isinstance(best, dict):
             top_label = str(best.get("label") or "")
@@ -93,20 +128,20 @@ class MolnusLatestImageIdSensor(CoordinatorEntity[MolnusCoordinator], SensorEnti
             except Exception:
                 top_acc = None
 
-        # Keep existing useful attrs too
         attrs: dict[str, Any] = {}
-        for k in [
+
+        for key in [
             "url",
             "thumbnailUrl",
             "captureDate",
             "createdAt",
+            "updatedAt",
             "deviceFilename",
             "CameraId",
         ]:
-            if k in latest:
-                attrs[k] = latest.get(k)
+            if key in latest:
+                attrs[key] = latest.get(key)
 
-        # New attrs for automation use
         attrs["ImagePredictions"] = preds
         attrs["species_labels"] = species_labels
         attrs["species_top"] = top_label
