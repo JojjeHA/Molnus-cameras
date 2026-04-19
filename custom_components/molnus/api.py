@@ -26,7 +26,7 @@ class MolnusApiClient:
     ) -> None:
         self._session = session
 
-        # Force new Molnus API host
+        # Force current Molnus API host
         self._base_url = "https://client-api.molnus.com"
 
         self._email = email
@@ -51,9 +51,7 @@ class MolnusApiClient:
             resp.raise_for_status()
             data = await resp.json()
 
-        # Supports both:
-        # {"token":{"accessToken":"..."}}
-        # and {"accessToken":"..."}
+        # Supports both old/new formats
         token_obj = (data or {}).get("token") or data or {}
 
         access = token_obj.get("accessToken")
@@ -61,7 +59,8 @@ class MolnusApiClient:
 
         if not access:
             raise ValueError(
-                f"Molnus login succeeded but token missing. Keys={list(data.keys()) if isinstance(data, dict) else data}"
+                f"Molnus login succeeded but token missing. "
+                f"Keys={list(data.keys()) if isinstance(data, dict) else data}"
             )
 
         self._tokens = MolnusTokens(
@@ -78,7 +77,7 @@ class MolnusApiClient:
 
             age = time.time() - self._tokens.obtained_at
 
-            # Renew every 25 min
+            # Renew every 25 minutes
             if age > 25 * 60:
                 await self._login()
 
@@ -93,10 +92,12 @@ class MolnusApiClient:
     ) -> list[dict[str, Any]]:
         token = await self.ensure_token()
 
-        # NEW verified Molnus endpoint
+        # Verified live endpoint
         url = (
-            f"{self._base_url}/cameras/images"
+            f"{self._base_url}/images"
             f"?cameraId={camera_id}"
+            f"&offset={offset}"
+            f"&limit={limit}"
         )
 
         headers = {
@@ -122,32 +123,28 @@ class MolnusApiClient:
 
         return self._extract_images(data, limit)
 
-    def _extract_images(self, data: Any, limit: int = 1) -> list[dict[str, Any]]:
-        # Old format
+    def _extract_images(
+        self,
+        data: Any,
+        limit: int = 1,
+    ) -> list[dict[str, Any]]:
+        # Expected current format:
+        # {"success": true, "images": [...]}
         if isinstance(data, dict):
             if "images" in data and isinstance(data["images"], list):
                 return data["images"][:limit]
 
-            # New format seen in browser:
-            # {"success":true,"cameras":[...]}
-            if "cameras" in data and isinstance(data["cameras"], list):
-                cams = data["cameras"]
+            # fallback if API returns list under another key later
+            if "items" in data and isinstance(data["items"], list):
+                return data["items"][:limit]
 
-                images: list[dict[str, Any]] = []
-
-                for cam in cams:
-                    if isinstance(cam, dict):
-                        if "images" in cam and isinstance(cam["images"], list):
-                            images.extend(cam["images"])
-
-                return images[:limit]
-
-        # Direct list format
         if isinstance(data, list):
             return data[:limit]
 
         raise ValueError(
-            f"Unexpected Molnus image response format: {type(data)} keys={list(data.keys()) if isinstance(data, dict) else ''}"
+            "Unexpected Molnus image response format: "
+            f"{type(data)} "
+            f"keys={list(data.keys()) if isinstance(data, dict) else ''}"
         )
 
     async def fetch_bytes(self, url: str) -> bytes:
