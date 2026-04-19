@@ -96,6 +96,7 @@ https://molnus.com/#/image-gallery?camera=4d7e3d36-a011-42bf-a14c-b2f639a78g3f
   - `thumbnailUrl`
   - `captureDate`
   - `createdAt`
+  - `updatedAt`
   - `deviceFilename`
   - `CameraId`
   - `ImagePredictions`
@@ -109,9 +110,9 @@ Use species_labels or species_top in automations.
 
 Example labels:
 
-SUS_SCROFA = Wild boar
+`SUS_SCROFA` = Wild boar
 
-CAPREOLUS = Roe deer
+`CAPREOLUS` = Roe deer
 
 ## Camera
 **Molnus Latest**
@@ -130,9 +131,9 @@ This integration is updated for the newer Molnus cloud platform.
 
 Current endpoints used internally:
 
-Auth: /auth/token
+Auth: `/auth/token`
 
-Images: /images?cameraId=...
+Images: `/images?cameraId=...`
 
 Hosted at:
 https://client-api.molnus.com
@@ -218,6 +219,25 @@ action:
         species_top={{ state_attr('sensor.molnus_latest_image_id','species_top') }}
         labels={{ state_attr('sensor.molnus_latest_image_id','species_labels') }}
 ```
+# Troubleshooting
+Sensor is `unknown`
 
+Check:
 
+- Correct camera UUID
+- Molnus login credentials
+- Camera has uploaded images
+- Integration reloaded after update
+  
+No picture shown
 
+Use the built-in camera entity:
+```yaml
+type: picture-entity
+entity: camera.molnus_latest
+```
+Integration stopped after Molnus update
+
+Update to latest version in HACS.
+# Disclaimer
+**This is an unofficial community integration and may require updates if Molnus changes their cloud API in the future.**
