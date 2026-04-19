@@ -20,9 +20,12 @@ It connects to the Molnus cloud, fetches the latest images for a selected camera
 
 - UI setup via **Config Flow**
 - Cloud polling via `DataUpdateCoordinator`
-- Molnus login via `/auth/token`
-- Latest image via `/images/get`
-- Camera entity uses Molnus CDN image URL
+- Secure Molnus login
+- Automatic token renewal
+- Fetches latest images from Molnus cloud API
+- Camera entity displays latest image in Home Assistant
+- Species prediction attributes for automations
+- Compatible with latest Molnus API platform changes
 
 ---
 
@@ -74,13 +77,12 @@ Then restart Home Assistant.
 
 # Finding the Camera ID (UUID)
 
-Open Molnus in a browser and log in:
+Open image gallery for your camera.
 
-- https://molnus.com/#/camera-list
+The UUID is shown in the browser address after: camera=
 
-Open up a picture by clicking on it and the UUID is the string in the browser address field after "camera="
-
-https://molnus.com/#/image-gallery?camera= [this is your UUID]
+Example:
+https://molnus.com/#/image-gallery?camera=4d7e3d36-a011-42bf-a14c-b2f639a78g3f
 
 ---
 
@@ -101,12 +103,39 @@ https://molnus.com/#/image-gallery?camera= [this is your UUID]
   - `species_top`
   - `species_top_accuracy`
     
-species_labels and species_top can be used in Home Assistant automations to trigger notifications for specific species (e.g. SUS_SCROFA for wild boar).
+Species detection usage
+
+Use species_labels or species_top in automations.
+
+Example labels:
+
+SUS_SCROFA = Wild boar
+
+CAPREOLUS = Roe deer
+
 ## Camera
 **Molnus Latest**
 - Displays the latest image inside Home Assistant
+- Recommended lovelace card:
+```yaml
+type: picture-entity
+entity: camera.molnus_latest
+show_name: false
+show_state: false
+```
 Screenshot: https://github.com/user-attachments/assets/0c88548d-a64c-446d-aa1e-943ece6239b1
 ---
+## API Compatibility
+This integration is updated for the newer Molnus cloud platform.
+
+Current endpoints used internally:
+
+Auth: /auth/token
+
+Images: /images?cameraId=...
+
+Hosted at:
+https://client-api.molnus.com
 
 # Example Automations
 Automation Example 1:
@@ -116,13 +145,15 @@ mode: single
 trigger:
   - platform: state
     entity_id: sensor.molnus_latest_image_id
+
 condition:
   - condition: template
     value_template: "{{ trigger.from_state is not none }}"
   - condition: template
     value_template: "{{ trigger.from_state.state not in ['unknown','unavailable'] }}"
+
 action:
-  - action: notify.mobile_app_iphone
+  - service: notify.mobile_app_iphone
     data:
       title: "📸 Ny bild registrerad!"
       message: >
@@ -136,19 +167,24 @@ Automation Example 2:
 ```yaml
 alias: "Molnus – Vildsvin före 21"
 mode: single
+
 trigger:
   - platform: state
     entity_id: sensor.molnus_latest_image_id
+
 condition:
   - condition: template
     value_template: >
       {{ trigger.to_state is not none and trigger.to_state.state not in ['unknown','unavailable',''] }}
+
   - condition: time
     before: "21:00:00"
+
   - condition: template
     value_template: >
       {% set labels = state_attr('sensor.molnus_latest_image_id','species_labels') or [] %}
       {{ 'SUS_SCROFA' in labels }}
+
 action:
   - service: notify.mobile_app_iphone
     data:
@@ -164,20 +200,22 @@ action:
 
 ```
 ---
-For Example 2 you'll need to know the name of the species and you can log that by using this automation:
+Example 3 – Log detected species:
 ```yaml
 alias: Molnus – Logga artklassning
 mode: queued
+
 trigger:
   - platform: state
     entity_id: sensor.molnus_latest_image_id
-condition: []
+
 action:
   - service: logbook.log
     data:
       name: Molnus
       message: >
-        Ny bild. species_top={{ state_attr('sensor.molnus_latest_image_id','species_top') }}
+        Ny bild.
+        species_top={{ state_attr('sensor.molnus_latest_image_id','species_top') }}
         labels={{ state_attr('sensor.molnus_latest_image_id','species_labels') }}
 ```
 
