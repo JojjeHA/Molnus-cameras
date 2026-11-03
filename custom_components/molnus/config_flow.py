@@ -19,10 +19,8 @@ from .const import (
     CONF_EMAIL,
     CONF_PASSWORD,
     CONF_CAMERA_ID,
-    CONF_WILDLIFE_REQUIRED,
     CONF_LIMIT,
     CONF_SCAN_INTERVAL,
-    DEFAULT_WILDLIFE_REQUIRED,
     DEFAULT_LIMIT,
     DEFAULT_SCAN_INTERVAL,
 )
@@ -152,9 +150,6 @@ class MolnusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         entry_data: dict[str, Any],
     ) -> FlowResult:
         """Start reauthentication."""
-
-        self._reauth_entry = self._get_reauth_entry()
-
         return await self.async_step_reauth_confirm()
 
     async def async_step_reauth_confirm(
@@ -249,13 +244,6 @@ class MolnusOptionsFlowHandler(config_entries.OptionsFlow):
 
         schema = vol.Schema(
             {
-                vol.Optional(
-                    CONF_WILDLIFE_REQUIRED,
-                    default=options.get(
-                        CONF_WILDLIFE_REQUIRED,
-                        DEFAULT_WILDLIFE_REQUIRED,
-                    ),
-                ): bool,
                 vol.Optional(
                     CONF_LIMIT,
                     default=options.get(
