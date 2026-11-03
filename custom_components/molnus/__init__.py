@@ -17,10 +17,8 @@ from .const import (
     CONF_EMAIL,
     CONF_PASSWORD,
     CONF_CAMERA_ID,
-    CONF_WILDLIFE_REQUIRED,
     CONF_LIMIT,
     CONF_SCAN_INTERVAL,
-    DEFAULT_WILDLIFE_REQUIRED,
     DEFAULT_LIMIT,
     DEFAULT_SCAN_INTERVAL,
 )
@@ -41,10 +39,6 @@ async def async_setup_entry(
     password = entry.data[CONF_PASSWORD]
     camera_id = entry.data[CONF_CAMERA_ID]
 
-    wildlife_required = entry.options.get(
-        CONF_WILDLIFE_REQUIRED,
-        DEFAULT_WILDLIFE_REQUIRED,
-    )
     limit = entry.options.get(
         CONF_LIMIT,
         DEFAULT_LIMIT,
@@ -65,7 +59,6 @@ async def async_setup_entry(
         hass=hass,
         client=client,
         camera_id=camera_id,
-        wildlife_required=wildlife_required,
         limit=limit,
         scan_interval_s=scan_interval,
     )
