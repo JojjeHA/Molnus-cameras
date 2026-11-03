@@ -36,7 +36,6 @@
       "init": {
         "title": "Molnus options",
         "data": {
-          "wildlife_required": "Wildlife required",
           "limit": "Images to fetch (min 1)",
           "scan_interval": "Scan interval (seconds)"
         }
