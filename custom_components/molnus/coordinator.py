@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from aiohttp import ClientResponseError
@@ -22,21 +22,27 @@ _LOGGER = logging.getLogger(__name__)
 def _parse_dt(value: str | None) -> datetime:
     """Parse Molnus ISO datetime (often ends with Z)."""
     if not value:
-        return datetime.min
+        return datetime.min.replace(tzinfo=timezone.utc)
 
     try:
-        return datetime.fromisoformat(value.replace("Z", "+00:00"))
-    except (TypeError, ValueError):
-        return datetime.min
+        parsed = datetime.fromisoformat(
+            value.replace("Z", "+00:00")
+        )
+        if parsed.tzinfo is None:
+            parsed = parsed.replace(tzinfo=timezone.utc)
+        return parsed
+    except (AttributeError, TypeError, ValueError):
+        return datetime.min.replace(tzinfo=timezone.utc)
 
 
 class MolnusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
+    """Coordinate Molnus camera image updates."""
+
     def __init__(
         self,
         hass: HomeAssistant,
         client: MolnusApiClient,
         camera_id: str,
-        wildlife_required: bool,
         limit: int,
         scan_interval_s: int,
     ) -> None:
@@ -49,7 +55,6 @@ class MolnusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
         self.client = client
         self.camera_id = camera_id
-        self.wildlife_required = wildlife_required
         self.limit = max(1, int(limit))
         self.scan_interval_s = int(scan_interval_s)
 
@@ -61,10 +66,9 @@ class MolnusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 camera_id=self.camera_id,
                 offset=0,
                 limit=self.limit,
-                wildlife_required=self.wildlife_required,
             )
 
-            # Always select the newest image, regardless of API order.
+            # Always select newest image regardless of API order.
             images_sorted: list[dict[str, Any]] = sorted(
                 images or [],
                 key=lambda x: _parse_dt(
