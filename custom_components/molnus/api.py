@@ -1,10 +1,10 @@
-from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Any
+from __future__ import annotations
 
 import asyncio
 import time
+from dataclasses import dataclass
+from typing import Any
 
 from aiohttp import ClientSession
 
@@ -26,7 +26,7 @@ class MolnusApiClient:
     ) -> None:
         self._session = session
 
-        # Force current Molnus API host
+        # Use the current Molnus API host.
         self._base_url = "https://client-api.molnus.com"
 
         self._email = email
@@ -36,6 +36,7 @@ class MolnusApiClient:
         self._lock = asyncio.Lock()
 
     async def _login(self) -> None:
+        """Authenticate with Molnus and store access tokens."""
         url = f"{self._base_url}/auth/token"
 
         payload = {
@@ -51,7 +52,6 @@ class MolnusApiClient:
             resp.raise_for_status()
             data = await resp.json()
 
-        # Supports both old/new formats
         token_obj = (data or {}).get("token") or data or {}
 
         access = token_obj.get("accessToken")
@@ -59,8 +59,7 @@ class MolnusApiClient:
 
         if not access:
             raise ValueError(
-                f"Molnus login succeeded but token missing. "
-                f"Keys={list(data.keys()) if isinstance(data, dict) else data}"
+                "Molnus login succeeded but access token is missing"
             )
 
         self._tokens = MolnusTokens(
@@ -70,6 +69,7 @@ class MolnusApiClient:
         )
 
     async def ensure_token(self) -> str:
+        """Return a valid access token, refreshing when necessary."""
         async with self._lock:
             if self._tokens is None:
                 await self._login()
@@ -77,7 +77,6 @@ class MolnusApiClient:
 
             age = time.time() - self._tokens.obtained_at
 
-            # Renew every 25 minutes
             if age > 25 * 60:
                 await self._login()
 
@@ -90,9 +89,9 @@ class MolnusApiClient:
         limit: int = 1,
         wildlife_required: bool = False,
     ) -> list[dict[str, Any]]:
+        """Fetch images for a Molnus camera."""
         token = await self.ensure_token()
 
-        # Verified live endpoint
         url = (
             f"{self._base_url}/images"
             f"?cameraId={camera_id}"
@@ -108,33 +107,57 @@ class MolnusApiClient:
 
         async with self._session.get(url, headers=headers) as resp:
             if resp.status == 401:
+                # Token may have expired. Authenticate once more.
                 async with self._lock:
                     self._tokens = None
 
                 token = await self.ensure_token()
                 headers["Authorization"] = f"Bearer {token}"
 
-                async with self._session.get(url, headers=headers) as resp2:
-                    resp2.raise_for_status()
-                    data = await resp2.json()
+                async with self._session.get(
+                    url,
+                    headers=headers,
+                ) as retry_resp:
+                    retry_resp.raise_for_status()
+                    data = await retry_resp.json()
             else:
                 resp.raise_for_status()
                 data = await resp.json()
 
         return self._extract_images(data, limit)
 
+    async def validate_camera(self, camera_id: str) -> bool:
+        """Check whether Molnus accepts an images request.
+
+        An empty image list is valid. The camera may simply
+        have no images yet.
+
+        Note: A successful request does not necessarily prove
+        that the camera ID exists or belongs to the account.
+        """
+        camera_id = str(camera_id).strip()
+
+        if not camera_id:
+            return False
+
+        await self.get_images(
+            camera_id=camera_id,
+            offset=0,
+            limit=1,
+        )
+
+        return True
+
     def _extract_images(
         self,
         data: Any,
         limit: int = 1,
     ) -> list[dict[str, Any]]:
-        # Expected current format:
-        # {"success": true, "images": [...]}
+        """Extract images from supported Molnus response formats."""
         if isinstance(data, dict):
             if "images" in data and isinstance(data["images"], list):
                 return data["images"][:limit]
 
-            # fallback if API returns list under another key later
             if "items" in data and isinstance(data["items"], list):
                 return data["items"][:limit]
 
@@ -142,12 +165,11 @@ class MolnusApiClient:
             return data[:limit]
 
         raise ValueError(
-            "Unexpected Molnus image response format: "
-            f"{type(data)} "
-            f"keys={list(data.keys()) if isinstance(data, dict) else ''}"
+            "Unexpected Molnus image response format"
         )
 
     async def fetch_bytes(self, url: str) -> bytes:
+        """Download image bytes."""
         async with self._session.get(url) as resp:
             resp.raise_for_status()
             return await resp.read()
