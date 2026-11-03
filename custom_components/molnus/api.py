@@ -87,7 +87,6 @@ class MolnusApiClient:
         camera_id: str,
         offset: int = 0,
         limit: int = 1,
-        wildlife_required: bool = False,
     ) -> list[dict[str, Any]]:
         """Fetch images for a Molnus camera."""
         token = await self.ensure_token()
