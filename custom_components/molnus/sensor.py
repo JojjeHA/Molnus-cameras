@@ -1,3 +1,4 @@
+
 from __future__ import annotations
 
 from typing import Any
@@ -82,7 +83,7 @@ class MolnusLatestImageIdSensor(
     def extra_state_attributes(self) -> dict[str, Any]:
         latest = self.coordinator.data.get("latest") or {}
 
-        # NEW API uses lowercase imagePredictions
+        # Molnus API uses lowercase imagePredictions.
         preds = (
             latest.get("imagePredictions")
             or latest.get("ImagePredictions")
@@ -111,7 +112,7 @@ class MolnusLatestImageIdSensor(
 
             try:
                 acc = float(p.get("accuracy", -1))
-            except Exception:
+            except (TypeError, ValueError):
                 acc = -1.0
 
             if acc > best_acc:
@@ -125,14 +126,14 @@ class MolnusLatestImageIdSensor(
             top_label = str(best.get("label") or "")
             try:
                 top_acc = float(best.get("accuracy"))
-            except Exception:
+            except (TypeError, ValueError):
                 top_acc = None
 
         attrs: dict[str, Any] = {}
 
+        # Never expose private image URLs in entity attributes.
+        # Home Assistant Recorder may store these attributes.
         for key in [
-            "url",
-            "thumbnailUrl",
             "captureDate",
             "createdAt",
             "updatedAt",
