@@ -1,3 +1,4 @@
+
 from __future__ import annotations
 
 import logging
@@ -6,9 +7,7 @@ from aiohttp import ClientSession
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
-from homeassistant.util import slugify
 
 from .api import MolnusApiClient
 from .const import (
@@ -30,7 +29,12 @@ from .coordinator import MolnusCoordinator
 _LOGGER = logging.getLogger(__name__)
 
 
-async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+async def async_setup_entry(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+) -> bool:
+    """Set up Molnus from a config entry."""
+
     session: ClientSession = async_get_clientsession(hass)
 
     email = entry.data[CONF_EMAIL]
@@ -66,6 +70,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         scan_interval_s=scan_interval,
     )
 
+    # Do not start entities if the initial refresh fails.
     await coordinator.async_config_entry_first_refresh()
 
     hass.data.setdefault(DOMAIN, {})
@@ -79,10 +84,28 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         PLATFORMS,
     )
 
+    # Reload the integration when options change.
+    entry.async_on_unload(
+        entry.add_update_listener(async_update_options)
+    )
+
     return True
 
 
-async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+async def async_update_options(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+) -> None:
+    """Reload Molnus when its options change."""
+    await hass.config_entries.async_reload(entry.entry_id)
+
+
+async def async_unload_entry(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+) -> bool:
+    """Unload a Molnus config entry."""
+
     unload_ok = await hass.config_entries.async_unload_platforms(
         entry,
         PLATFORMS,
@@ -94,62 +117,21 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     return unload_ok
 
 
-async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Migrate old entity_ids to include camera_id suffix."""
-    camera_id_raw = str(entry.data.get(CONF_CAMERA_ID, "")).strip()
+async def async_migrate_entry(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+) -> bool:
+    """Preserve existing entity IDs without forced renaming."""
 
-    if not camera_id_raw:
-        return True
-
-    camera_id_slug = slugify(camera_id_raw)
-
-    ent_reg = er.async_get(hass)
-
-    unique_id = f"molnus_{camera_id_raw}_latest_image_id"
-
-    current_entity_id = ent_reg.async_get_entity_id(
-        "sensor",
-        DOMAIN,
-        unique_id,
+    _LOGGER.debug(
+        "Molnus config entry migration check: %s",
+        entry.entry_id,
     )
 
-    if not current_entity_id:
-        return True
-
-    desired_entity_id = (
-        f"sensor.molnus_camera_latest_image_id_{camera_id_slug}"
-    )
-
-    if current_entity_id == desired_entity_id:
-        return True
-
-    if ent_reg.async_get(desired_entity_id):
-        _LOGGER.warning(
-            "Cannot migrate %s -> %s because %s already exists",
-            current_entity_id,
-            desired_entity_id,
-            desired_entity_id,
-        )
-        return True
-
-    try:
-        _LOGGER.info(
-            "Migrating entity_id %s -> %s",
-            current_entity_id,
-            desired_entity_id,
-        )
-
-        ent_reg.async_update_entity(
-            current_entity_id,
-            new_entity_id=desired_entity_id,
-        )
-
-    except ValueError as err:
-        _LOGGER.error(
-            "Entity ID migration failed for %s -> %s: %s",
-            current_entity_id,
-            desired_entity_id,
-            err,
+    if entry.version < 2:
+        hass.config_entries.async_update_entry(
+            entry,
+            version=2,
         )
 
     return True
