@@ -1,243 +1,371 @@
+
 <p align="center">
-  <img src="assets/molnus-logo.png" width="350">
+  <img src="assets/molnus-logo.png" width="350" alt="Molnus logo">
 </p>
 
 # Molnus Home Assistant Integration
 
+An unofficial Home Assistant integration for **Molnus wildlife cameras**.
 
-A custom Home Assistant integration for **Molnus** wildlife cameras.
+The integration connects to the Molnus cloud API, retrieves images from a selected camera, and exposes a sensor and a camera entity in Home Assistant.
 
-It connects to the Molnus cloud, fetches the latest images for a selected camera, and exposes:
-
-- ✅ `sensor` entity: Latest image ID + useful attributes (url, captureDate, thumbnail, etc)
-- ✅ `camera` entity: Shows the latest photo directly inside Home Assistant
-
-> ⚠️ Unofficial integration. Not affiliated with Molnus.
-
----
+> **Disclaimer:** This is an unofficial community integration and is not affiliated with Molnus.
 
 ## Features
 
-- UI setup via **Config Flow**
-- Cloud polling via `DataUpdateCoordinator`
-- Secure Molnus login
-- Automatic token renewal
-- Fetches latest images from Molnus cloud API
-- Camera entity displays latest image in Home Assistant
-- Species prediction attributes for automations
-- Compatible with latest Molnus API platform changes
+- Configuration through the Home Assistant UI
+- Molnus cloud authentication
+- Automatic access token renewal
+- Periodic image updates using DataUpdateCoordinator
+- Latest image displayed through a Home Assistant camera entity
+- Latest image ID exposed through a sensor
+- Capture timestamps and image metadata
+- Wildlife species predictions for automations
+- Configurable polling interval and image fetch limit
+- Reauthentication when Molnus credentials become invalid
+- Support for multiple cameras through separate configuration entries
 
----
+## Installation
 
-# Installation
+### HACS (Recommended)
 
-## ✅ Install with HACS (Recommended)
+Until this integration is available in the official HACS repository list, add it as a custom repository.
 
-### 1) Add this repository to HACS
-In Home Assistant:
+1. Open **HACS** in Home Assistant.
+2. Open the menu and select **Custom repositories**.
+3. Enter the repository URL:
 
-**HACS → Integrations → 3 dots → Custom repositories**
+   https://github.com/JojjeHA/Molnus-cameras
 
-Add:
+4. Select **Integration** as the category.
+5. Add the repository.
+6. Find **Molnus** in HACS and download it.
+7. Restart Home Assistant.
 
-- Repository: `https://github.com/JojjeHA/Molnus-cameras`
-- Category: **Integration**
+Once the integration is included in the official HACS repository list, it can be discovered directly through HACS.
 
-### 2) Install
-Go to:
+### Manual installation
 
-**HACS → Integrations → Molnus → Download**
+Copy the integration directory to:
 
-### 3) Restart Home Assistant
-Restart is required after installing via HACS.
-
-### 4) Add the integration
-Go to:
-
-**Settings → Devices & services → Add integration → Molnus**
-
-You will need:
-
-- Molnus email
-- Molnus password
-- Camera ID (UUID)
-
----
-
-## Manual installation (Alternative)
-
-Copy this folder into your Home Assistant config:
-
+```text
 /config/custom_components/molnus/
+```
 
+Restart Home Assistant.
 
-Then restart Home Assistant.
+## Configuration
 
----
+1. Open **Settings > Devices & services**.
+2. Select **Add integration**.
+3. Search for **Molnus**.
+4. Enter:
+   - Camera name
+   - Molnus email
+   - Molnus password
+   - Camera ID
+5. Complete the setup.
 
-# Finding the Camera ID (UUID)
+The integration checks Molnus authentication and attempts to retrieve images during configuration.
 
-Open image gallery for your camera.
+An empty image list is valid because a camera may not have uploaded any images yet.
 
-The UUID is shown in the browser address after: camera=
+**Note:** A successful image request does not necessarily prove that the camera ID belongs to the account. Camera ID validation depends on the responses returned by the Molnus API.
+
+### Finding your Camera ID
+
+Sign in to Molnus using a web browser and open the image gallery for your camera.
+
+Look for the `camera` parameter in the address.
 
 Example:
-https://molnus.com/#/image-gallery?camera=4d7e3d36-a011-42bf-a14c-b2f639a78g3f
 
----
+```text
+https://molnus.com/#/image-gallery?camera=YOUR-CAMERA-UUID
+```
 
-# Entities
+Use the UUID shown after `camera=`.
 
-## Sensor
-**Molnus Latest Image ID**
-- State: Latest image ID (numeric)
-- Attributes:
-  - `url`
-  - `thumbnailUrl`
-  - `captureDate`
-  - `createdAt`
-  - `updatedAt`
-  - `deviceFilename`
-  - `CameraId`
-  - `ImagePredictions`
-  - `species_labels`
-  - `species_top`
-  - `species_top_accuracy`
-    
-Species detection usage
+## Options
 
-Use species_labels or species_top in automations.
+Open **Settings > Devices & services > Molnus** and select **Configure**.
+
+Available options:
+
+| Option | Default | Allowed range |
+|--------|---------|---------------|
+| Images to fetch | 50 | 1–500 |
+| Scan interval | 60 seconds | 10–86400 seconds |
+
+Changes to these options automatically reload the integration.
+
+### Reauthentication
+
+If Molnus rejects the stored credentials, Home Assistant can request reauthentication.
+
+Enter your updated email and password when prompted.
+
+The integration then attempts to validate the new credentials and reload the configuration entry.
+
+## Entities
+
+Each configured camera creates a sensor and a camera entity.
+
+### Latest Image ID Sensor
+
+The sensor state contains the ID of the latest image.
+
+Available attributes:
+
+- `captureDate`
+- `createdAt`
+- `updatedAt`
+- `deviceFilename`
+- `CameraId`
+- `ImagePredictions`
+- `species_labels`
+- `species_top`
+- `species_top_accuracy`
+
+The sensor does not expose private image URLs.
+
+In particular, `url` and `thumbnailUrl` are intentionally excluded because Home Assistant may store entity attributes in Recorder.
+
+#### Species prediction attributes
+
+`species_labels` contains the detected species labels.
+
+`species_top` contains the label with the highest prediction accuracy.
+
+`species_top_accuracy` contains its reported accuracy.
 
 Example labels:
 
-`SUS_SCROFA` = Wild boar
+- `SUS_SCROFA` – Wild boar
+- `CAPREOLUS` – Roe deer
 
-`CAPREOLUS` = Roe deer
+Prediction values depend on the data returned by Molnus.
 
-## Camera
-**Molnus Latest**
-- Displays the latest image inside Home Assistant
-- Recommended lovelace card:
+### Latest Image Camera
+
+The camera entity displays the latest available image.
+
+Image data is retrieved by the integration and exposed through Home Assistant's camera functionality.
+
+The original Molnus image URL is not published as a sensor attribute.
+
+### Finding entity IDs
+
+Entity IDs may vary depending on the camera name, existing entities, and previous customizations.
+
+Open **Settings > Devices & services > Entities** to find the actual entity IDs.
+
+For the examples below, replace:
+
+```text
+sensor.YOUR_MOLNUS_SENSOR
+camera.YOUR_MOLNUS_CAMERA
+notify.mobile_app_YOUR_PHONE
+```
+
+with your own entity and notification service names.
+
+Existing entity IDs are preserved by the integration. They are not forcibly renamed during startup.
+
+## Dashboard
+
+To display the latest image, use a Picture Entity card:
+
 ```yaml
 type: picture-entity
-entity: camera.molnus_latest
+entity: camera.YOUR_MOLNUS_CAMERA
 show_name: false
 show_state: false
 ```
-Screenshot: https://github.com/user-attachments/assets/0c88548d-a64c-446d-aa1e-943ece6239b1
----
-## API Compatibility
-This integration is updated for the newer Molnus cloud platform.
 
-Current endpoints used internally:
+## Example Automations
 
-Auth: `/auth/token`
+The examples below use Home Assistant camera entities rather than exposing Molnus image URLs.
 
-Images: `/images?cameraId=...`
+For mobile notifications, image access depends on your Home Assistant URL, mobile app configuration, and authentication.
 
-Hosted at:
-https://client-api.molnus.com
+Test image delivery with your own installation before relying on these examples.
 
-# Example Automations
-Automation Example 1:
+### Example 1 – Notify when a new image arrives
+
 ```yaml
-alias: "📸 Molnus: Ny bild från viltkameran"
-mode: single
-trigger:
-  - platform: state
-    entity_id: sensor.molnus_latest_image_id
-
-condition:
-  - condition: template
-    value_template: "{{ trigger.from_state is not none }}"
-  - condition: template
-    value_template: "{{ trigger.from_state.state not in ['unknown','unavailable'] }}"
-
-action:
-  - service: notify.mobile_app_iphone
-    data:
-      title: "📸 Ny bild registrerad!"
-      message: >
-        Tid: {{ state_attr('sensor.molnus_latest_image_id', 'captureDate') }}
-      data:
-        image: "{{ state_attr('sensor.molnus_latest_image_id', 'url') }}"
-```
-
----
-Automation Example 2:
-```yaml
-alias: "Molnus – Vildsvin före 21"
+alias: "Molnus - New wildlife image"
 mode: single
 
-trigger:
-  - platform: state
-    entity_id: sensor.molnus_latest_image_id
+triggers:
+  - trigger: state
+    entity_id: sensor.YOUR_MOLNUS_SENSOR
+    not_to:
+      - unknown
+      - unavailable
 
-condition:
+conditions:
   - condition: template
     value_template: >
-      {{ trigger.to_state is not none and trigger.to_state.state not in ['unknown','unavailable',''] }}
+      {{ trigger.from_state is not none
+         and trigger.from_state.state not in
+         ['unknown', 'unavailable'] }}
 
+actions:
+  - action: notify.mobile_app_YOUR_PHONE
+    data:
+      title: "New wildlife image"
+      message: >
+        Capture time:
+        {{ state_attr('sensor.YOUR_MOLNUS_SENSOR', 'captureDate') }}
+      data:
+        image: "/api/camera_proxy/camera.YOUR_MOLNUS_CAMERA"
+```
+
+The image path references the Home Assistant camera proxy, not the original Molnus image URL.
+
+Some mobile notification clients may require additional configuration or an accessible URL to display the image.
+
+### Example 2 – Wild boar detection before 21:00
+
+```yaml
+alias: "Molnus - Wild boar before 21"
+mode: single
+
+triggers:
+  - trigger: state
+    entity_id: sensor.YOUR_MOLNUS_SENSOR
+    not_to:
+      - unknown
+      - unavailable
+
+conditions:
   - condition: time
     before: "21:00:00"
 
   - condition: template
     value_template: >
-      {% set labels = state_attr('sensor.molnus_latest_image_id','species_labels') or [] %}
+      {% set labels =
+         state_attr('sensor.YOUR_MOLNUS_SENSOR',
+                    'species_labels') or [] %}
       {{ 'SUS_SCROFA' in labels }}
 
-action:
-  - service: notify.mobile_app_iphone
+actions:
+  - action: notify.mobile_app_YOUR_PHONE
     data:
-      title: "🐗 Vildsvin upptäckt"
-      message: "Molnus klassning: SUS_SCROFA"
+      title: "Wild boar detected"
+      message: "Molnus species prediction: SUS_SCROFA"
       data:
-        image: "{{ state_attr('sensor.molnus_latest_image_id','url') }}"
-        push:
-          sound:
-            name: default
-            critical: 1
-            volume: 1.0
-
+        image: "/api/camera_proxy/camera.YOUR_MOLNUS_CAMERA"
 ```
----
-Example 3 – Log detected species:
+
+### Example 3 – Log detected species
+
 ```yaml
-alias: Molnus – Logga artklassning
+alias: "Molnus - Log detected species"
 mode: queued
 
-trigger:
-  - platform: state
-    entity_id: sensor.molnus_latest_image_id
+triggers:
+  - trigger: state
+    entity_id: sensor.YOUR_MOLNUS_SENSOR
+    not_to:
+      - unknown
+      - unavailable
 
-action:
-  - service: logbook.log
+actions:
+  - action: logbook.log
     data:
       name: Molnus
       message: >
-        Ny bild.
-        species_top={{ state_attr('sensor.molnus_latest_image_id','species_top') }}
-        labels={{ state_attr('sensor.molnus_latest_image_id','species_labels') }}
+        New image.
+        species_top={{
+          state_attr('sensor.YOUR_MOLNUS_SENSOR', 'species_top')
+        }}
+        labels={{
+          state_attr('sensor.YOUR_MOLNUS_SENSOR', 'species_labels')
+        }}
 ```
-# Troubleshooting
-Sensor is `unknown`
+
+## Security and Privacy
+
+Molnus image URLs may allow access to private camera images without additional authentication.
+
+For this reason:
+
+- Raw image URLs are not exposed in sensor attributes.
+- Automation examples do not use Molnus image URLs.
+- Images are retrieved internally by the integration.
+- The camera entity is intended to be accessed through Home Assistant's camera functionality.
+
+Home Assistant Recorder may retain attributes from older integration versions until their history is purged.
+
+Review any existing automations, scripts, dashboards, and notifications that previously used `url` or `thumbnailUrl`.
+
+## API Compatibility
+
+The integration uses the Molnus cloud API.
+
+Current endpoints:
+
+```text
+POST https://client-api.molnus.com/auth/token
+GET  https://client-api.molnus.com/images
+```
+
+The images endpoint is queried using camera ID, offset, and limit parameters.
+
+The API is unofficial and may change without notice.
+
+## Troubleshooting
+
+### Sensor is unavailable
 
 Check:
 
-- Correct camera UUID
-- Molnus login credentials
-- Camera has uploaded images
-- Integration reloaded after update
-  
-No picture shown
+- Molnus credentials are correct.
+- The camera ID is correct.
+- The Molnus service is reachable.
+- Home Assistant can access the internet.
+- The integration has completed its initial update.
 
-Use the built-in camera entity:
-```yaml
-type: picture-entity
-entity: camera.molnus_latest
-```
-Integration stopped after Molnus update
+### No image is displayed
 
-Update to latest version in HACS.
-# Disclaimer
-**This is an unofficial community integration and may require updates if Molnus changes their cloud API in the future.**
+Check that:
+
+- The camera has uploaded images to Molnus.
+- The camera entity is available.
+- The image is accessible through the Home Assistant camera entity.
+- The integration has permission to access the selected camera.
+
+### Mobile notification image is missing
+
+Check:
+
+- The camera entity displays an image in Home Assistant.
+- The notification uses the correct camera entity ID.
+- The Home Assistant Companion App can reach your Home Assistant instance.
+- Your mobile platform supports the configured image path.
+
+### Integration requires reauthentication
+
+Open the integration in **Settings > Devices & services** and follow the reauthentication prompt.
+
+### Integration stopped working after a Molnus update
+
+Molnus may have changed its API.
+
+Check the integration logs and look for updates in the GitHub repository.
+
+## Support
+
+For bug reports and feature requests, visit:
+
+https://github.com/JojjeHA/Molnus-cameras/issues
+
+When reporting an issue, include relevant Home Assistant logs but remove credentials, access tokens, and private image URLs.
+
+## Disclaimer
+
+This project is not affiliated with, endorsed by, or supported by Molnus.
+
+The integration depends on an unofficial cloud API and may require updates if Molnus changes its service.
