@@ -1,3 +1,4 @@
+
 {
   "config": {
     "step": {
@@ -5,14 +6,29 @@
         "title": "Connect to Molnus",
         "description": "Enter your Molnus credentials and camera ID.",
         "data": {
+          "camera_name": "Camera name",
           "email": "Email",
           "password": "Password",
           "camera_id": "Camera ID"
         }
+      },
+      "reauth_confirm": {
+        "title": "Reauthenticate Molnus",
+        "description": "Your Molnus credentials are no longer valid. Enter your email and password to reconnect.",
+        "data": {
+          "email": "Email",
+          "password": "Password"
+        }
       }
     },
     "error": {
-      "invalid_camera_id": "Camera ID looks invalid."
+      "invalid_auth": "Invalid email or password.",
+      "cannot_connect": "Unable to connect to Molnus. Please try again later.",
+      "invalid_camera_id": "Invalid camera ID or camera not accessible."
+    },
+    "abort": {
+      "reauth_successful": "Molnus authentication updated successfully.",
+      "already_configured": "This camera is already configured."
     }
   },
   "options": {
