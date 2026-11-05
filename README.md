@@ -29,20 +29,13 @@ The integration connects to the Molnus cloud API, retrieves images from a select
 
 ### HACS (Recommended)
 
-Until this integration is available in the official HACS repository list, add it as a custom repository.
+Molnus is available in the default HACS repository list. No custom repository is required.
 
 1. Open **HACS** in Home Assistant.
-2. Open the menu and select **Custom repositories**.
-3. Enter the repository URL:
-
-   https://github.com/JojjeHA/Molnus-cameras
-
-4. Select **Integration** as the category.
-5. Add the repository.
-6. Find **Molnus** in HACS and download it.
-7. Restart Home Assistant.
-
-Once the integration is included in the official HACS repository list, it can be discovered directly through HACS.
+2. Search for **Molnus**.
+3. Select the **Molnus** integration and click **Download**.
+4. Restart Home Assistant.
+5. Go to **Settings > Devices & services > Add integration** and search for **Molnus** to complete the setup.
 
 ### Manual installation
 
